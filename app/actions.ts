@@ -12,27 +12,37 @@ const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
 async function getBrowser() {
   // Check environment
   const isDev = process.env.NODE_ENV !== "production";
+  console.log(`Environment: ${isDev ? "Development" : "Production"}`);
 
   if (isDev) {
+    console.log("Using local Puppeteer instance");
     const puppeteer = await import("puppeteer");
     return puppeteer.default.launch({
       headless: "new" as any,
     });
   } else {
-    return puppeteerCore.launch({
-      args: [
-        ...chromium.args,
-        "--disable-features=AudioServiceOutOfProcess",
-        "--disable-gpu",
-        "--disable-dev-shm-usage",
-        "--disable-setuid-sandbox",
-        "--no-sandbox",
-        "--no-zygote",
-        "--single-process",
-      ],
-      executablePath: await chromium.executablePath(),
-      headless: true,
-    });
+    console.log("Using @sparticuz/chromium in production");
+    try {
+      const browser = await puppeteerCore.launch({
+        args: [
+          ...chromium.args,
+          "--disable-features=AudioServiceOutOfProcess",
+          "--disable-gpu",
+          "--disable-dev-shm-usage",
+          "--disable-setuid-sandbox",
+          "--no-sandbox",
+          "--no-zygote",
+          "--single-process",
+        ],
+        executablePath: await chromium.executablePath(),
+        headless: true,
+      });
+      console.log("Browser launched successfully");
+      return browser;
+    } catch (error) {
+      console.error("Failed to launch browser:", error);
+      throw error;
+    }
   }
 }
 
@@ -224,54 +234,78 @@ export async function scrapeWebsite(url: string) {
       // Replace your existing Puppeteer extraction code in the catch block
       if (fetchMethod !== "puppeteer") {
         try {
-          console.log("Starting Puppeteer extraction...");
+          console.log("[PUPPETEER] Starting Puppeteer extraction...");
           fetchMethod = "puppeteer";
+          console.log("[PUPPETEER] Initializing browser");
           const browser = await getBrowser();
 
           try {
+            console.log("[PUPPETEER] Creating new page");
             const page = await browser.newPage();
+            console.log("[PUPPETEER] Setting user agent");
             await page.setUserAgent(
               "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36"
             );
 
-            console.log(`Navigating to ${formattedUrl} with Puppeteer...`);
+            console.log(`[PUPPETEER] Navigating to ${formattedUrl}`);
             await page.goto(formattedUrl, {
-              waitUntil: "domcontentloaded", // Less strict than networkidle0
-              timeout: 30000, // Shorter timeout for serverless
+              waitUntil: "domcontentloaded",
+              timeout: 30000,
             });
+            console.log("[PUPPETEER] Navigation completed");
 
             // Try to get title
+            console.log("[PUPPETEER] Extracting page title");
             articleTitle = (await page.title()) || "Untitled Article";
-            console.log(`Page title: ${articleTitle}`);
+            console.log(`[PUPPETEER] Page title: "${articleTitle}"`);
 
-            // Extract text content from main content areas - simplified
-            // Alternative solution with type assertion
+            // Extract text content from main content areas
+            console.log("[PUPPETEER] Extracting page content");
             const textContent = await (page.evaluate as any)(() => {
-              const mainContent =
-                document.querySelector("article") ||
-                document.querySelector("main") ||
-                document.querySelector(".content") ||
-                document.body;
+              try {
+                console.log("[BROWSER] Finding main content element");
+                const mainContent =
+                  document.querySelector("article") ||
+                  document.querySelector("main") ||
+                  document.querySelector(".content") ||
+                  document.body;
 
-              // Remove unnecessary elements
-              const elementsToRemove = mainContent.querySelectorAll(
-                "nav, footer, header, aside, script, style"
-              );
-              elementsToRemove.forEach((el) => el.remove());
+                console.log("[BROWSER] Removing unnecessary elements");
+                const elementsToRemove = mainContent.querySelectorAll(
+                  "nav, footer, header, aside, script, style"
+                );
+                elementsToRemove.forEach((el) => el.remove());
 
-              return mainContent.innerText;
+                console.log("[BROWSER] Extracting text");
+                return mainContent.innerText || "No content found";
+              } catch (err) {
+                return `Error in browser context: ${
+                  typeof err === "object" && err !== null && "message" in err
+                    ? (err as { message?: string }).message
+                    : String(err)
+                }`;
+              }
             });
 
+            console.log(
+              `[PUPPETEER] Content extraction complete, type: ${typeof textContent}`
+            );
             content = textContent;
             console.log(
-              `Extracted content length: ${content.length} characters`
+              `[PUPPETEER] Extracted content length: ${content.length} characters`
+            );
+            console.log(
+              `[PUPPETEER] First 100 characters: "${content
+                .substring(0, 100)
+                .replace(/\n/g, " ")}..."`
             );
           } finally {
-            console.log("Closing browser...");
+            console.log("[PUPPETEER] Closing browser...");
             await browser.close();
+            console.log("[PUPPETEER] Browser closed");
           }
         } catch (puppeteerError) {
-          console.error("Puppeteer extraction error:", puppeteerError);
+          console.error("[PUPPETEER] Extraction error:", puppeteerError);
           // Continue with what we have or fallback to simple content
         }
       }
