@@ -21,10 +21,19 @@ export default function Home() {
     try {
       setLoading(true);
       setError(null);
-      const data = await scrapeWebsite(url);
-      setContent(data.content);
+      const result = await scrapeWebsite(url);
+      // if (typeof result === "string" && result) {
+      //   setContent(result);
+      // } else {
+      //   setContent(null);
+      //   setError("No content found.");
+      // }
+      setContent(result.content)
     } catch (err) {
-      setError("Failed to scrape website: " + (err instanceof Error ? err.message : String(err)));
+      setError(
+        "Failed to scrape website: " +
+          (err instanceof Error ? err.message : String(err))
+      );
     } finally {
       setLoading(false);
     }
@@ -33,9 +42,9 @@ export default function Home() {
   return (
     <div className="bg-background h-screen flex flex-col items-center justify-center p-4">
       <div className="w-full max-w-md space-y-4">
-        <Input 
-          placeholder="paste..." 
-          className="w-full" 
+        <Input
+          placeholder="paste..."
+          className="w-full"
           value={url}
           onChange={(e) => setUrl(e.target.value)}
         />
@@ -48,20 +57,18 @@ export default function Home() {
             <ToggleGroupItem value="text">text</ToggleGroupItem>
             <ToggleGroupItem value="video">video</ToggleGroupItem>
           </ToggleGroup>
-          <Button 
-            onClick={handleScrape} 
-            variant="outline" 
+          <Button
+            onClick={handleScrape}
+            variant="outline"
             className=""
             disabled={loading}
           >
             {loading ? "Loading..." : "go"}
           </Button>
         </div>
-        
-        {error && (
-          <div className="text-red-500 mt-4">{error}</div>
-        )}
-        
+
+        {error && <div className="text-red-500 mt-4">{error}</div>}
+
         {content && (
           <div className="mt-4 border p-4 rounded-md max-h-80 overflow-auto">
             <pre className="text-xs whitespace-pre-wrap">{content}</pre>
