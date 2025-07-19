@@ -12,6 +12,8 @@ import {
   HoverCardTrigger,
 } from "@/components/ui/hover-card";
 
+export const dynamic = 'force-dynamic';
+
 export default function Home() {
   const [url, setUrl] = useState("");
   const [loading, setLoading] = useState(false);
