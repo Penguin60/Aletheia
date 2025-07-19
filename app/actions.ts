@@ -4,47 +4,9 @@ import { GoogleGenAI } from "@google/genai";
 import { Readability } from "@mozilla/readability";
 import { JSDOM } from "jsdom";
 import * as cheerio from "cheerio";
-import puppeteerCore from "puppeteer-core";
-import chromium from "@sparticuz/chromium";
+import puppeteer from "puppeteer";
 
 const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
-
-async function getBrowser() {
-  // Check environment
-  const isDev = process.env.NODE_ENV !== "production";
-  console.log(`Environment: ${isDev ? "Development" : "Production"}`);
-
-  if (isDev) {
-    console.log("Using local Puppeteer instance");
-    const puppeteer = await import("puppeteer");
-    return puppeteer.default.launch({
-      headless: "new" as any,
-    });
-  } else {
-    console.log("Using @sparticuz/chromium in production");
-    try {
-      const browser = await puppeteerCore.launch({
-        args: [
-          ...chromium.args,
-          "--disable-features=AudioServiceOutOfProcess",
-          "--disable-gpu",
-          "--disable-dev-shm-usage",
-          "--disable-setuid-sandbox",
-          "--no-sandbox",
-          "--no-zygote",
-          "--single-process",
-        ],
-        executablePath: await chromium.executablePath(),
-        headless: true,
-      });
-      console.log("Browser launched successfully");
-      return browser;
-    } catch (error) {
-      console.error("Failed to launch browser:", error);
-      throw error;
-    }
-  }
-}
 
 export async function scrapeWebsite(url: string) {
   try {
@@ -73,8 +35,10 @@ export async function scrapeWebsite(url: string) {
       console.log("Standard fetch failed, trying with Puppeteer...");
       fetchMethod = "puppeteer";
 
-      // Replace the Puppeteer code with:
-      const browser = await getBrowser();
+      // Second attempt: Use Puppeteer for dynamic content
+      const browser = await puppeteer.launch({
+        headless: true,
+      });
       try {
         const page = await browser.newPage();
         await page.setUserAgent(
@@ -86,7 +50,7 @@ export async function scrapeWebsite(url: string) {
         });
 
         // Wait a bit for dynamic content to load
-        await new Promise((res) => setTimeout(res, 2000));
+        await new Promise(res => setTimeout(res, 2000));
 
         html = await page.content();
       } finally {
@@ -231,82 +195,110 @@ export async function scrapeWebsite(url: string) {
         "Readability extraction failed, trying Puppeteer extraction..."
       );
 
-      // Replace your existing Puppeteer extraction code in the catch block
       if (fetchMethod !== "puppeteer") {
+        fetchMethod = "puppeteer";
+        const browser = await puppeteer.launch({
+          headless: true,
+        });
         try {
-          console.log("[PUPPETEER] Starting Puppeteer extraction...");
-          fetchMethod = "puppeteer";
-          console.log("[PUPPETEER] Initializing browser");
-          const browser = await getBrowser();
+          const page = await browser.newPage();
+          await page.setUserAgent(
+            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36"
+          );
+          await page.goto(formattedUrl, {
+            waitUntil: "networkidle0",
+            timeout: 60000,
+          });
 
-          try {
-            console.log("[PUPPETEER] Creating new page");
-            const page = await browser.newPage();
-            console.log("[PUPPETEER] Setting user agent");
-            await page.setUserAgent(
-              "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36"
-            );
+          // Try to get title
+          articleTitle = await page.title() || "Untitled Article";
 
-            console.log(`[PUPPETEER] Navigating to ${formattedUrl}`);
-            await page.goto(formattedUrl, {
-              waitUntil: "domcontentloaded",
-              timeout: 30000,
-            });
-            console.log("[PUPPETEER] Navigation completed");
+          // Extract text content from main content areas
+          const textContent = await page.evaluate(() => {
+            // Function to extract visible text while preserving some structure
+            const getVisibleText = (element: any) => {
+              let text = "";
 
-            // Try to get title
-            console.log("[PUPPETEER] Extracting page title");
-            articleTitle = (await page.title()) || "Untitled Article";
-            console.log(`[PUPPETEER] Page title: "${articleTitle}"`);
+              // Skip hidden elements
+              const style = window.getComputedStyle(element);
+              if (style.display === "none" || style.visibility === "hidden")
+                return "";
 
-            // Extract text content from main content areas
-            console.log("[PUPPETEER] Extracting page content");
-            const textContent = await (page.evaluate as any)(() => {
-              try {
-                console.log("[BROWSER] Finding main content element");
-                const mainContent =
-                  document.querySelector("article") ||
-                  document.querySelector("main") ||
-                  document.querySelector(".content") ||
-                  document.body;
+              // Process child nodes
+              for (const child of element.childNodes) {
+                if (child.nodeType === Node.TEXT_NODE) {
+                  const trimmed = child.textContent.trim();
+                  if (trimmed) text += " " + trimmed;
+                } else if (child.nodeType === Node.ELEMENT_NODE) {
+                  // Add line breaks for block elements
+                  const childTag = child.tagName.toLowerCase();
+                  if (
+                    [
+                      "div",
+                      "p",
+                      "h1",
+                      "h2",
+                      "h3",
+                      "h4",
+                      "h5",
+                      "h6",
+                      "section",
+                      "article",
+                    ].includes(childTag)
+                  ) {
+                    text += "\n\n";
+                  } else if (childTag === "li") {
+                    text += "\n• ";
+                  } else if (childTag === "br") {
+                    text += "\n";
+                  }
 
-                console.log("[BROWSER] Removing unnecessary elements");
-                const elementsToRemove = mainContent.querySelectorAll(
-                  "nav, footer, header, aside, script, style"
-                );
-                elementsToRemove.forEach((el) => el.remove());
-
-                console.log("[BROWSER] Extracting text");
-                return mainContent.innerText || "No content found";
-              } catch (err) {
-                return `Error in browser context: ${
-                  typeof err === "object" && err !== null && "message" in err
-                    ? (err as { message?: string }).message
-                    : String(err)
-                }`;
+                  text += getVisibleText(child);
+                }
               }
+              return text;
+            };
+
+            const contentSelectors = [
+              "article",
+              "main",
+              '[role="main"]',
+              ".post-content",
+              ".article-content",
+              ".entry-content",
+              "#content",
+              ".content",
+            ];
+
+            for (const selector of contentSelectors) {
+              const elements = document.querySelectorAll(selector);
+              if (elements.length) {
+                return Array.from(elements)
+                  .map((el) => getVisibleText(el))
+                  .join("\n\n");
+              }
+            }
+
+            const body = document.body;
+
+            [
+              "nav",
+              "header",
+              "footer",
+              "aside",
+              ".sidebar",
+              ".ads",
+              ".comments",
+            ].forEach((selector) => {
+              document.querySelectorAll(selector).forEach((el) => el.remove());
             });
 
-            console.log(
-              `[PUPPETEER] Content extraction complete, type: ${typeof textContent}`
-            );
-            content = textContent;
-            console.log(
-              `[PUPPETEER] Extracted content length: ${content.length} characters`
-            );
-            console.log(
-              `[PUPPETEER] First 100 characters: "${content
-                .substring(0, 100)
-                .replace(/\n/g, " ")}..."`
-            );
-          } finally {
-            console.log("[PUPPETEER] Closing browser...");
-            await browser.close();
-            console.log("[PUPPETEER] Browser closed");
-          }
-        } catch (puppeteerError) {
-          console.error("[PUPPETEER] Extraction error:", puppeteerError);
-          // Continue with what we have or fallback to simple content
+            return getVisibleText(body);
+          });
+
+          content = textContent;
+        } finally {
+          await browser.close();
         }
       }
 
@@ -376,8 +368,6 @@ export async function scrapeWebsite(url: string) {
     if (!content.trim()) {
       throw new Error("Could not extract meaningful content from the webpage");
     }
-
-    console.log(`Content extracted successfully, length: ${content.length} characters`);
 
     const prompt = `
     The following content is from an article titled: "${articleTitle}"
