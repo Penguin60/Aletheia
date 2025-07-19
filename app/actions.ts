@@ -5,6 +5,7 @@ import { Readability } from "@mozilla/readability";
 import { JSDOM } from "jsdom";
 import * as cheerio from "cheerio";
 import puppeteer from "puppeteer";
+import chromium from "@sparticuz/chromium";
 
 const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
 
@@ -36,8 +37,14 @@ export async function scrapeWebsite(url: string) {
       fetchMethod = "puppeteer";
 
       // Second attempt: Use Puppeteer for dynamic content
+      // First instance around line 38
       const browser = await puppeteer.launch({
         headless: true,
+        executablePath:
+          process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH ||
+          (await chromium.executablePath()),
+        args: chromium.args,
+        defaultViewport: { width: 1280, height: 800 },
       });
       try {
         const page = await browser.newPage();
@@ -50,7 +57,7 @@ export async function scrapeWebsite(url: string) {
         });
 
         // Wait a bit for dynamic content to load
-        await new Promise(res => setTimeout(res, 2000));
+        await new Promise((res) => setTimeout(res, 2000));
 
         html = await page.content();
       } finally {
@@ -199,6 +206,11 @@ export async function scrapeWebsite(url: string) {
         fetchMethod = "puppeteer";
         const browser = await puppeteer.launch({
           headless: true,
+          executablePath:
+            process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH ||
+            (await chromium.executablePath()),
+          args: chromium.args,
+          defaultViewport: { width: 1280, height: 800 },
         });
         try {
           const page = await browser.newPage();
@@ -211,7 +223,7 @@ export async function scrapeWebsite(url: string) {
           });
 
           // Try to get title
-          articleTitle = await page.title() || "Untitled Article";
+          articleTitle = (await page.title()) || "Untitled Article";
 
           // Extract text content from main content areas
           const textContent = await page.evaluate(() => {
