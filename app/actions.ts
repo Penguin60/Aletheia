@@ -4,9 +4,31 @@ import { GoogleGenAI } from "@google/genai";
 import { Readability } from "@mozilla/readability";
 import { JSDOM } from "jsdom";
 import * as cheerio from "cheerio";
-import puppeteer from "puppeteer";
+import puppeteerCore from "puppeteer-core";
+import chromium from "@sparticuz/chromium";
 
 const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+
+async function getBrowser() {
+  // Check environment
+  const isDev = process.env.NODE_ENV !== "production";
+  
+  if (isDev) {
+    // For local development
+    const puppeteer = await import("puppeteer");
+    return puppeteer.default.launch({
+      headless: "new" as any,
+    });
+  } else {
+    // For Vercel production
+    return puppeteerCore.launch({
+      args: chromium.args,
+      // defaultViewport line removed
+      executablePath: await chromium.executablePath(),
+      headless: true,
+    });
+  }
+}
 
 export async function scrapeWebsite(url: string) {
   try {
@@ -35,10 +57,8 @@ export async function scrapeWebsite(url: string) {
       console.log("Standard fetch failed, trying with Puppeteer...");
       fetchMethod = "puppeteer";
 
-      // Second attempt: Use Puppeteer for dynamic content
-      const browser = await puppeteer.launch({
-        headless: "new" as any,
-      });
+      // Replace the Puppeteer code with:
+      const browser = await getBrowser();
       try {
         const page = await browser.newPage();
         await page.setUserAgent(
@@ -198,9 +218,7 @@ export async function scrapeWebsite(url: string) {
       if (fetchMethod !== "puppeteer") {
         // If we haven't used Puppeteer yet, try it now
         fetchMethod = "puppeteer";
-        const browser = await puppeteer.launch({
-          headless: "new" as any,
-        });
+        const browser = await getBrowser();
         try {
           const page = await browser.newPage();
           await page.setUserAgent(
@@ -215,7 +233,7 @@ export async function scrapeWebsite(url: string) {
           articleTitle = (await page.title()) || "Untitled Article";
 
           // Extract text content from main content areas
-          const textContent = await page.evaluate(() => {
+          const textContent = await (page.evaluate as any)(() => {
             // Function to extract visible text while preserving some structure
             const getVisibleText = (element: any) => {
               let text = "";
