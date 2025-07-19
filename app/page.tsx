@@ -46,11 +46,12 @@ export default function Home() {
       <div className="absolute top-6 left-1/2 -translate-x-1/2">
         <HoverCard>
           <HoverCardTrigger className="px-3 py-1 rounded bg-muted text-sm font-medium cursor-pointer">
-        about
+            about
           </HoverCardTrigger>
-          <HoverCardContent>
+          <HoverCardContent className="bg-background dark:bg-background rounded-lg shadow-lg p-4">
             <div className="text-sm">
-              Analyzes the political bias of a piece of media, just paste the link or upload the video!
+              Analyzes the political bias of a piece of media, just paste the
+              link or upload the video!
             </div>
           </HoverCardContent>
         </HoverCard>
@@ -130,33 +131,39 @@ export default function Home() {
             </div>
             <div className="text-center mt-1 text-sm font-semibold">
               {leaningIndex !== null &&
-                (leaningIndex === 0 ? (
+                (leaningIndex >= -1 && leaningIndex <= 1 ? (
                   <>
                     Source is <span className="text-gray-600">neutral</span>
                   </>
-                ) : leaningIndex > 0 && leaningIndex <= 4 ? (
+                ) : leaningIndex < -1 && leaningIndex >= -3 ? (
                   <>
                     Source is{" "}
-                    <span className="text-red-600">
-                      moderately right leaning
-                    </span>
+                    <span className="text-blue-600">slightly left leaning</span>
                   </>
-                ) : leaningIndex > 4 ? (
+                ) : leaningIndex > 1 && leaningIndex <= 3 ? (
                   <>
                     Source is{" "}
-                    <span className="text-red-600">strongly right leaning</span>
+                    <span className="text-red-600">slightly right leaning</span>
                   </>
-                ) : leaningIndex < 0 && leaningIndex >= -4 ? (
+                ) : leaningIndex < -3 && leaningIndex >= -7 ? (
                   <>
                     Source is{" "}
-                    <span className="text-blue-600">
-                      moderately left leaning
-                    </span>
+                    <span className="text-blue-600">moderately left leaning</span>
                   </>
-                ) : leaningIndex < -4 ? (
+                ) : leaningIndex > 3 && leaningIndex <= 7 ? (
+                  <>
+                    Source is{" "}
+                    <span className="text-red-600">moderately right leaning</span>
+                  </>
+                ) : leaningIndex < -7 ? (
                   <>
                     Source is{" "}
                     <span className="text-blue-600">strongly left leaning</span>
+                  </>
+                ) : leaningIndex > 7 ? (
+                  <>
+                    Source is{" "}
+                    <span className="text-red-600">strongly right leaning</span>
                   </>
                 ) : (
                   <>
