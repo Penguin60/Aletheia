@@ -4,7 +4,7 @@ import { GoogleGenAI } from "@google/genai";
 import { Readability } from "@mozilla/readability";
 import { JSDOM } from "jsdom";
 import * as cheerio from "cheerio";
-import { chromium } from "playwright";
+import puppeteer from "puppeteer";
 
 const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
 
@@ -32,19 +32,20 @@ export async function scrapeWebsite(url: string) {
 
       html = await response.text();
     } catch (fetchError) {
-      console.log("Standard fetch failed, trying with Playwright...");
-      fetchMethod = "playwright";
+      console.log("Standard fetch failed, trying with Puppeteer...");
+      fetchMethod = "puppeteer";
 
-      // Second attempt: Use Playwright for dynamic content
-      const browser = await chromium.launch();
+      // Second attempt: Use Puppeteer for dynamic content
+      const browser = await puppeteer.launch({
+        headless: "new",
+      });
       try {
-        const context = await browser.newContext({
-          userAgent:
-            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36",
-        });
-        const page = await context.newPage();
+        const page = await browser.newPage();
+        await page.setUserAgent(
+          "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36"
+        );
         await page.goto(formattedUrl, {
-          waitUntil: "networkidle",
+          waitUntil: "networkidle0",
           timeout: 60000,
         });
 
@@ -191,26 +192,27 @@ export async function scrapeWebsite(url: string) {
         });
     } catch (readabilityError) {
       console.log(
-        "Readability extraction failed, trying Playwright extraction..."
+        "Readability extraction failed, trying Puppeteer extraction..."
       );
 
-      if (fetchMethod !== "playwright") {
-        // If we haven't used Playwright yet, try it now
-        fetchMethod = "playwright";
-        const browser = await chromium.launch();
+      if (fetchMethod !== "puppeteer") {
+        // If we haven't used Puppeteer yet, try it now
+        fetchMethod = "puppeteer";
+        const browser = await puppeteer.launch({
+          headless: "new",
+        });
         try {
-          const context = await browser.newContext({
-            userAgent:
-              "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36",
-          });
-          const page = await context.newPage();
+          const page = await browser.newPage();
+          await page.setUserAgent(
+            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36"
+          );
           await page.goto(formattedUrl, {
-            waitUntil: "networkidle",
+            waitUntil: "networkidle0",
             timeout: 60000,
           });
 
           // Try to get title
-          articleTitle = (await page.title()) || "Untitled Article";
+          articleTitle = await page.title() || "Untitled Article";
 
           // Extract text content from main content areas
           const textContent = await page.evaluate(() => {
