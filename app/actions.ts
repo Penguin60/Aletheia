@@ -36,7 +36,15 @@ export async function scrapeWebsite(url: string) {
       fetchMethod = "playwright";
 
       // Second attempt: Use Playwright for dynamic content
-      const browser = await chromium.launch();
+      const browser = await chromium.launch({
+        executablePath:
+          process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH || undefined,
+        args: [
+          "--no-sandbox",
+          "--disable-setuid-sandbox",
+          "--disable-dev-shm-usage",
+        ],
+      });
       try {
         const context = await browser.newContext({
           userAgent:
@@ -258,7 +266,6 @@ export async function scrapeWebsite(url: string) {
               return text;
             };
 
-            // Try to find main content containers
             const contentSelectors = [
               "article",
               "main",
@@ -279,10 +286,8 @@ export async function scrapeWebsite(url: string) {
               }
             }
 
-            // If no specific content container found, get body text excluding typical non-content areas
             const body = document.body;
 
-            // Remove common non-content elements before extraction
             [
               "nav",
               "header",
@@ -304,10 +309,7 @@ export async function scrapeWebsite(url: string) {
         }
       }
 
-      // If we still don't have content, use a fallback method
       if (!content.trim()) {
-        // Fallback extraction method: get text directly from main content areas
-        // Try to find title from common selectors
         const titleSelectors = [
           "h1",
           "h1.title",
@@ -323,7 +325,6 @@ export async function scrapeWebsite(url: string) {
           }
         }
 
-        // Extract content from main content areas
         const contentSelectors = [
           "article",
           ".content",
@@ -343,7 +344,6 @@ export async function scrapeWebsite(url: string) {
           }
         }
 
-        // Extract text from paragraphs and headings
         mainContent.find("h1, h2, h3, h4, h5, h6, p").each((_, element) => {
           const text = $(element).text().trim();
           if (text) {
@@ -351,7 +351,6 @@ export async function scrapeWebsite(url: string) {
           }
         });
 
-        // Extract lists
         mainContent.find("li").each((_, element) => {
           const text = $(element).text().trim();
           if (text) {
@@ -359,7 +358,6 @@ export async function scrapeWebsite(url: string) {
           }
         });
 
-        // If we still don't have content, get all text as a last resort
         if (!content.trim()) {
           content = mainContent
             .text()
@@ -370,7 +368,6 @@ export async function scrapeWebsite(url: string) {
       }
     }
 
-    // Clean up content
     content = content.replace(/\n{3,}/g, "\n\n").trim();
 
     if (!content.trim()) {
