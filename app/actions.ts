@@ -6,8 +6,31 @@ import { JSDOM } from "jsdom";
 import * as cheerio from "cheerio";
 import puppeteer from "puppeteer";
 import chromium from "@sparticuz/chromium";
+import { TwelveLabs } from "twelvelabs-js";
 
 const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+const tl = new TwelveLabs({ apiKey: process.env.TWELVELABS_API_KEY as string });
+
+const models = [
+  {
+    name: "pegasus1.2",
+    options: ["visual", "audio"],
+  },
+];
+let index: any;
+try {
+  index = await tl.index.create({
+    name: "huh",
+    models: models as any,
+  });
+} catch (error) {
+  index = await tl.index.retrieve("687bfceb61fa6d2e4d154088");
+}
+console.log(
+  `A new index has been created: id=${index.id} name=${
+    index.name
+  } models=${JSON.stringify(index.models)}`
+);
 
 export async function scrapeWebsite(url: string) {
   try {
@@ -410,6 +433,7 @@ export async function scrapeWebsite(url: string) {
     });
 
     const responseText = geminiResponse.text ?? "";
+    console.log("Gemini response:", responseText);
 
     const scoreMatch = responseText.match(/SCORE:\s*(-?\d+)/);
     const score = scoreMatch ? parseInt(scoreMatch[1]) : 0;
@@ -431,6 +455,91 @@ export async function scrapeWebsite(url: string) {
     };
   } catch (error) {
     console.error("Error scraping website:", error);
+    throw error;
+  }
+}
+
+export async function analyzeVideoForBias(
+  videoFile: string | Buffer | NodeJS.ReadableStream
+) {
+  console.log("Starting video analysis...");
+  try {
+    // Ensure the file is a supported type (string path, Buffer, or ReadableStream)
+    if (
+      typeof videoFile !== "string" &&
+      !(videoFile instanceof Buffer) &&
+      !(videoFile instanceof require("stream").Readable)
+    ) {
+      throw new Error(
+        "videoFile must be a file path, Buffer, or ReadableStream"
+      );
+    }
+
+    console.log("create task with file upload");
+    // Create the task using file upload instead of URL
+    const task = await tl.task.create({
+      indexId: index.id,
+      file: videoFile, // Use 'file' property for upload
+    });
+    console.log(`Task id=${task.id} Video id=${task.videoId}`);
+    // 4. Monitor the indexing process
+    await task.waitForDone(5000, (task) => {
+      console.log(`  Status=${task.status}`);
+    });
+    if (task.status !== "ready") {
+      throw new Error(`Indexing failed with status ${task.status}`);
+    }
+    console.log(`The unique identifier of your video is ${task.videoId}`);
+    // 5. Perform open-ended analysis
+    const prompt = `
+  Analyze the provided video for political bias and leaning.
+  
+  Please provide:
+  1. A number between -10 and 10 (inclusive) indicating the political leaning. The lower the number, the more left leaning. The higher the number, the more right leaning.
+  2. Three specific examples from the video that demonstrate this political bias. These examples can either be from speech (from the transcript) or visual (ie. a piece of clothing, hand gestures).
+  
+  Important: List the examples in order of significance, with the most egregious/obvious examples of bias first. Focus on the clearest and most impactful instances of political framing, loaded language, or one-sided representation. When considering the political leaning surrounding the video, keep in mind the context surrounding the video, why it was produced, and who was responsible for publishing it.
+  
+  Format your response exactly as follows:
+  SCORE: [your number]
+  
+  EXAMPLES:
+  - [most significant example of bias]
+  - [second most significant example]
+  - [third most significant example]
+  `;
+
+    console.log("Starting text stream analysis...");
+
+    const textStream = await tl.analyzeStream({
+      videoId: task.videoId as string,
+      prompt: prompt,
+      // temperature: 0.2
+    });
+    // 6. Process the results
+    for await (const text of textStream) {
+      console.log(text);
+    }
+    console.log(`Aggregated text: ${textStream.aggregatedText}`);
+    const responseText = textStream.aggregatedText;
+
+    const scoreMatch = responseText.match(/SCORE:\s*(-?\d+)/);
+    const score = scoreMatch ? parseInt(scoreMatch[1]) : 0;
+
+    const examplesSection = responseText.split("EXAMPLES:")[1]?.trim();
+    const examples = examplesSection
+      ? examplesSection
+          .split(/\n-\s*/)
+          .filter((example) => example.trim().length > 0)
+          .map((example) => example.trim())
+      : [];
+    return {
+      leaningIndex: score,
+      content: responseText,
+      biasExamples: examples,
+    };
+  } catch (error) {
+    console.error("Error analyzing video:", error);
     throw error;
   }
 }

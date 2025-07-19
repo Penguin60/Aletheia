@@ -5,7 +5,7 @@ import { Input } from "@/components/ui/input";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { useEffect, useRef, useState } from "react";
 import { useTheme } from "next-themes";
-import { scrapeWebsite } from "./actions";
+import { analyzeVideoForBias, scrapeWebsite } from "./actions";
 import {
   HoverCard,
   HoverCardContent,
@@ -27,6 +27,7 @@ export default function Home() {
   const { theme, setTheme } = useTheme();
   const [mounted, setMounted] = useState(false);
   const [selectedType, setSelectedType] = useState("text");
+  const [videoFile, setVideoFile] = useState<File | null>(null);
 
   useEffect(() => {
     setMounted(true);
@@ -88,10 +89,32 @@ export default function Home() {
     setError("");
 
     try {
-      const result = await scrapeWebsite(url);
-      setLeaningIndex(result.leaningIndex);
-      setContent(result.content);
-      setBiasExamples(result.biasExamples);
+      if (selectedType === "text") {
+        const result = await scrapeWebsite(url);
+        setLeaningIndex(result.leaningIndex);
+        setContent(result.content);
+        setBiasExamples(result.biasExamples);
+      }
+      else if (selectedType === "video" && videoFile) {
+        // Send video file to API route using FormData
+        const formData = new FormData();
+        formData.append('file', videoFile);
+        const response = await fetch('/api/upload', {
+          method: 'POST',
+          body: formData,
+        });
+        if (!response.ok) {
+          const errorData = await response.json();
+          throw new Error(errorData.error || 'Upload failed');
+        }
+        const result = await response.json();
+        setLeaningIndex(result.leaningIndex);
+        setContent(result.content);
+        setBiasExamples(result.biasExamples);
+      } else if (selectedType === "video" && !videoFile) {
+        setError("Please upload a video file.");
+        return;
+      }
     } catch (err) {
       console.error("Error:", err);
       let errorMessage = "Failed to analyze the website. Please try again.";
@@ -194,19 +217,34 @@ export default function Home() {
             : {}
         }
       >
-        <Input
-          placeholder="paste..."
-          className="w-full"
-          value={url}
-          onChange={(e) => setUrl(e.target.value)}
-          onKeyDown={(e) => {
-            const isDisabled =
-              loading || !url.trim() || !/^https?:\/\/.+\..+/.test(url);
-            if (e.key === "Enter" && !isDisabled) {
-              handleSubmit(e as any);
-            }
-          }}
-        />
+        {selectedType === "text" ? (
+          <Input
+            placeholder="paste..."
+            className="w-full"
+            value={url}
+            onChange={(e) => setUrl(e.target.value)}
+            onKeyDown={(e) => {
+              const isDisabled = loading || !url.trim() || !/^https?:\/\/.+\..+/.test(url);
+              if (e.key === "Enter" && !isDisabled) {
+                handleSubmit(e as any);
+              }
+            }}
+          />
+        ) : (
+          <Input
+            placeholder="upload file..."
+            type="file"
+            accept="video/*"
+            className="w-full"
+            onChange={(e) => {
+              if (e.target.files && e.target.files[0]) {
+                setVideoFile(e.target.files[0]);
+              } else {
+                setVideoFile(null);
+              }
+            }}
+          />
+        )}
         <div className="flex items-center justify-between">
           <ToggleGroup
             type="single"
@@ -247,7 +285,12 @@ export default function Home() {
             onClick={handleSubmit}
             variant="outline"
             className="hover:text-primary hover:bg-accent dark:hover:bg-accent border-black hover:border-primary dark:hover:border-white"
-            disabled={loading || !url.trim() || !/^https?:\/\/.+\..+/.test(url)}
+            disabled={
+              loading ||
+              (selectedType === "text"
+                ? !url.trim() || !/^https?:\/\/.+\..+/.test(url)
+                : !videoFile)
+            }
           >
             {loading ? "Loading..." : "go"}
           </Button>
