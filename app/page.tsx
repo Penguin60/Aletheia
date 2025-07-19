@@ -231,7 +231,7 @@ export default function Home() {
           <Button
             onClick={handleSubmit}
             variant="outline"
-            className="hover:text-primary border-black"
+            className="hover:text-primary hover:bg-accent dark:hover:bg-accent border-black hover:border-primary dark:hover:border-white"
             disabled={loading || !url.trim() || !/^https?:\/\/.+\..+/.test(url)}
           >
             {loading ? "Loading..." : "go"}
@@ -250,14 +250,22 @@ export default function Home() {
       {leaningIndex !== null && (
         <div className="mt-50 w-full max-w-md mx-auto">
           <div className="flex justify-between text-xs mb-2 w-full">
-            <span className="text-blue-600 font-bold">Strongly Left</span>
+            <span className={
+              theme === "dark"
+                ? "text-blue-300 font-bold"
+                : "text-blue-600 font-bold"
+            }>Strongly Left</span>
             <span
               className="text-text mx-auto font-bold"
               style={{ flex: 1, textAlign: "center" }}
             >
               Neutral
             </span>
-            <span className="text-red-600 font-bold">Strongly Right</span>
+            <span className={
+              theme === "dark"
+                ? "text-red-300 font-bold"
+                : "text-red-600 font-bold"
+            }>Strongly Right</span>
           </div>
           {/* Scale */}
           <div
@@ -283,54 +291,60 @@ export default function Home() {
           </div>
           {/* Bottom: Number labels */}
           <div className="flex justify-between text-xs mt-2 w-full">
-            <span className="text-blue-600 font-bold">-10</span>
+            <span className={
+              theme === "dark"
+                ? "text-blue-300 font-bold"
+                : "text-blue-600 font-bold"
+            }>
+              -10
+            </span>
             <span
-              className="text-gray-600 mx-auto font-bold"
+              className="text-text mx-auto font-bold"
               style={{ flex: 1, textAlign: "center" }}
             >
               0
             </span>
-            <span className="text-red-600 font-bold">+10</span>
+            <span className={
+              theme === "dark"
+                ? "text-red-300 font-bold"
+                : "text-red-600 font-bold"
+            }>
+              +10
+            </span>
           </div>
           <div className="text-center mt-2 text-sm font-semibold">
             {leaningIndex !== null &&
               (leaningIndex >= -1 && leaningIndex <= 1 ? (
                 <>
-                  Source is <span className="text-gray-600">neutral</span>
+                  Source is <span className={theme === "dark" ? "text-gray-400" : "text-gray-600"}>neutral</span>
                 </>
               ) : leaningIndex < -1 && leaningIndex >= -3 ? (
                 <>
-                  Source is{" "}
-                  <span className="text-blue-600">slightly left leaning</span>
+                  Source is <span className={theme === "dark" ? "text-blue-300" : "text-blue-600"}>slightly left leaning</span>
                 </>
               ) : leaningIndex > 1 && leaningIndex <= 3 ? (
                 <>
-                  Source is{" "}
-                  <span className="text-red-600">slightly right leaning</span>
+                  Source is <span className={theme === "dark" ? "text-red-300" : "text-red-600"}>slightly right leaning</span>
                 </>
               ) : leaningIndex < -3 && leaningIndex >= -7 ? (
                 <>
-                  Source is{" "}
-                  <span className="text-blue-600">moderately left leaning</span>
+                  Source is <span className={theme === "dark" ? "text-blue-300" : "text-blue-600"}>moderately left leaning</span>
                 </>
               ) : leaningIndex > 3 && leaningIndex <= 7 ? (
                 <>
-                  Source is{" "}
-                  <span className="text-red-600">moderately right leaning</span>
+                  Source is <span className={theme === "dark" ? "text-red-300" : "text-red-600"}>moderately right leaning</span>
                 </>
               ) : leaningIndex < -7 ? (
                 <>
-                  Source is{" "}
-                  <span className="text-blue-600">strongly left leaning</span>
+                  Source is <span className={theme === "dark" ? "text-blue-300" : "text-blue-600"}>strongly left leaning</span>
                 </>
               ) : leaningIndex > 7 ? (
                 <>
-                  Source is{" "}
-                  <span className="text-red-600">strongly right leaning</span>
+                  Source is <span className={theme === "dark" ? "text-red-300" : "text-red-600"}>strongly right leaning</span>
                 </>
               ) : (
                 <>
-                  Source is <span className="text-gray-600">neutral</span>
+                  Source is <span className={theme === "dark" ? "text-gray-400" : "text-gray-600"}>neutral</span>
                 </>
               ))}
           </div>
