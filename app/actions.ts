@@ -162,7 +162,7 @@ export async function scrapeWebsite(url: string) {
       });
 
     // const prompt = `Refine the following website content for readability and conciseness. Do not add any additional text. Only remove irrelevant information, like site headers and login prompts; do not remove, change, or summarize any parts of the actual article. You must return the content provided to you the exact same, except for elements like site headers, etc that do not relate to the overall theme. Do not include extra formatting. The content is as follows:\n\n${content}`;
-    const prompt = `Given the following content, return a single word indicating whether it is left leaning, right leaning, or neutral. You must only return one of the following three words correspoinding with the previous choices: left, right, center. The content: ${content}`
+    const prompt = `Given the following content, return a number between -10 and 10 (inclusive) indicating the political leaning. The lower the number, the more left leaning. The higher the number, the more right leaning. The content: ${content}`
     const geminiResponse = await ai.models.generateContent({
       model: "gemini-2.0-flash",
       contents: `${prompt}`,
