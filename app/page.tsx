@@ -20,13 +20,13 @@ export default function Home() {
   const [biasExamples, setBiasExamples] = useState<string[]>([]);
   const [error, setError] = useState("");
   const [aboutOpacity, setAboutOpacity] = useState(1);
-  const [scrolled, setScrolled] = useState(false);
   const [scrolledTop, setScrolledTop] = useState(false);
   const [scrolledBottom, setScrolledBottom] = useState(false);
   const inputRef = useRef<HTMLDivElement>(null);
 
   const { theme, setTheme } = useTheme();
   const [mounted, setMounted] = useState(false);
+  const [selectedType, setSelectedType] = useState("text");
 
   useEffect(() => {
     setMounted(true);
@@ -194,11 +194,34 @@ export default function Home() {
         <div className="flex items-center justify-between">
           <ToggleGroup
             type="single"
-            defaultValue="text"
+            value={selectedType}
+            onValueChange={setSelectedType}
             className="justify-start"
           >
-            <ToggleGroupItem value="text">text</ToggleGroupItem>
-            <ToggleGroupItem value="video">video</ToggleGroupItem>
+            <ToggleGroupItem
+              value="text"
+              className={
+                selectedType === "text"
+                  ? theme === "dark"
+                    ? "bg-background text-black border border-white"
+                    : "bg-background text-white border border-black"
+                  : ""
+              }
+            >
+              text
+            </ToggleGroupItem>
+            <ToggleGroupItem
+              value="video"
+              className={
+                selectedType === "video"
+                  ? theme === "dark"
+                    ? "bg-background text-black border border-white"
+                    : "bg-background text-white border border-black"
+                  : ""
+              }
+            >
+              video
+            </ToggleGroupItem>
           </ToggleGroup>
           <Button
             onClick={handleSubmit}

@@ -11,7 +11,7 @@ const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
 export async function scrapeWebsite(url: string) {
   try {
     const formattedUrl = url.startsWith("http") ? url : `https://${url}`;
-    
+
     let html: string;
     let fetchMethod = "standard";
 
@@ -34,19 +34,23 @@ export async function scrapeWebsite(url: string) {
     } catch (fetchError) {
       console.log("Standard fetch failed, trying with Playwright...");
       fetchMethod = "playwright";
-      
+
       // Second attempt: Use Playwright for dynamic content
       const browser = await chromium.launch();
       try {
         const context = await browser.newContext({
-          userAgent: "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36"
+          userAgent:
+            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36",
         });
         const page = await context.newPage();
-        await page.goto(formattedUrl, { waitUntil: 'networkidle', timeout: 60000 });
-        
+        await page.goto(formattedUrl, {
+          waitUntil: "networkidle",
+          timeout: 60000,
+        });
+
         // Wait a bit for dynamic content to load
         await page.waitForTimeout(2000);
-        
+
         html = await page.content();
       } finally {
         await browser.close();
@@ -131,11 +135,11 @@ export async function scrapeWebsite(url: string) {
     ).remove();
 
     const cleanedHtml = $.html();
-    
+
     // Try to extract content with Readability
     let articleTitle = "Untitled Article";
     let content = "";
-    
+
     try {
       const dom = new JSDOM(cleanedHtml, { url: formattedUrl });
       const reader = new Readability(dom.window.document);
@@ -151,7 +155,7 @@ export async function scrapeWebsite(url: string) {
 
       $("body")
         .find("*")
-        .each((_, element) => {
+        .each((_: number, element: any) => {
           const tagName = element.name;
 
           const directText = $(element)
@@ -186,95 +190,131 @@ export async function scrapeWebsite(url: string) {
           }
         });
     } catch (readabilityError) {
-      console.log("Readability extraction failed, trying Playwright extraction...");
-      
+      console.log(
+        "Readability extraction failed, trying Playwright extraction..."
+      );
+
       if (fetchMethod !== "playwright") {
         // If we haven't used Playwright yet, try it now
         fetchMethod = "playwright";
         const browser = await chromium.launch();
         try {
           const context = await browser.newContext({
-            userAgent: "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36"
+            userAgent:
+              "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36",
           });
           const page = await context.newPage();
-          await page.goto(formattedUrl, { waitUntil: 'networkidle', timeout: 60000 });
-          
+          await page.goto(formattedUrl, {
+            waitUntil: "networkidle",
+            timeout: 60000,
+          });
+
           // Try to get title
-          articleTitle = await page.title() || "Untitled Article";
-          
+          articleTitle = (await page.title()) || "Untitled Article";
+
           // Extract text content from main content areas
           const textContent = await page.evaluate(() => {
             // Function to extract visible text while preserving some structure
-            const getVisibleText = (element) => {
-              let text = '';
-              
+            const getVisibleText = (element: any) => {
+              let text = "";
+
               // Skip hidden elements
               const style = window.getComputedStyle(element);
-              if (style.display === 'none' || style.visibility === 'hidden') return '';
-              
+              if (style.display === "none" || style.visibility === "hidden")
+                return "";
+
               // Process child nodes
               for (const child of element.childNodes) {
                 if (child.nodeType === Node.TEXT_NODE) {
                   const trimmed = child.textContent.trim();
-                  if (trimmed) text += ' ' + trimmed;
+                  if (trimmed) text += " " + trimmed;
                 } else if (child.nodeType === Node.ELEMENT_NODE) {
                   // Add line breaks for block elements
                   const childTag = child.tagName.toLowerCase();
-                  if (['div', 'p', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'section', 'article'].includes(childTag)) {
-                    text += '\n\n';
-                  } else if (childTag === 'li') {
-                    text += '\n• ';
-                  } else if (childTag === 'br') {
-                    text += '\n';
+                  if (
+                    [
+                      "div",
+                      "p",
+                      "h1",
+                      "h2",
+                      "h3",
+                      "h4",
+                      "h5",
+                      "h6",
+                      "section",
+                      "article",
+                    ].includes(childTag)
+                  ) {
+                    text += "\n\n";
+                  } else if (childTag === "li") {
+                    text += "\n• ";
+                  } else if (childTag === "br") {
+                    text += "\n";
                   }
-                  
+
                   text += getVisibleText(child);
                 }
               }
               return text;
             };
-            
+
             // Try to find main content containers
             const contentSelectors = [
-              'article', 
-              'main', 
+              "article",
+              "main",
               '[role="main"]',
-              '.post-content',
-              '.article-content',
-              '.entry-content',
-              '#content',
-              '.content'
+              ".post-content",
+              ".article-content",
+              ".entry-content",
+              "#content",
+              ".content",
             ];
-            
+
             for (const selector of contentSelectors) {
               const elements = document.querySelectorAll(selector);
               if (elements.length) {
-                return Array.from(elements).map(el => getVisibleText(el)).join('\n\n');
+                return Array.from(elements)
+                  .map((el) => getVisibleText(el))
+                  .join("\n\n");
               }
             }
-            
+
             // If no specific content container found, get body text excluding typical non-content areas
             const body = document.body;
-            
+
             // Remove common non-content elements before extraction
-            ['nav', 'header', 'footer', 'aside', '.sidebar', '.ads', '.comments'].forEach(selector => {
-              document.querySelectorAll(selector).forEach(el => el.remove());
+            [
+              "nav",
+              "header",
+              "footer",
+              "aside",
+              ".sidebar",
+              ".ads",
+              ".comments",
+            ].forEach((selector) => {
+              document.querySelectorAll(selector).forEach((el) => el.remove());
             });
-            
+
             return getVisibleText(body);
           });
-          
+
           content = textContent;
         } finally {
           await browser.close();
         }
       }
-      
+
       // If we still don't have content, use a fallback method
       if (!content.trim()) {
         // Fallback extraction method: get text directly from main content areas
         // Try to find title from common selectors
-        const titleSelectors = ["h1", "h1.title", "header h1", ".article-title", ".post-title"];
+        const titleSelectors = [
+          "h1",
+          "h1.title",
+          "header h1",
+          ".article-title",
+          ".post-title",
+        ];
         for (const selector of titleSelectors) {
           const titleElement = $(selector).first();
           if (titleElement.length && titleElement.text().trim()) {
@@ -282,11 +322,19 @@ export async function scrapeWebsite(url: string) {
             break;
           }
         }
-        
+
         // Extract content from main content areas
-        const contentSelectors = ["article", ".content", ".post-content", ".article-content", "main", "#content", "#main"];
-        let mainContent = $("body");
-        
+        const contentSelectors = [
+          "article",
+          ".content",
+          ".post-content",
+          ".article-content",
+          "main",
+          "#content",
+          "#main",
+        ];
+        let mainContent: cheerio.Cheerio<any> = $("body").first();
+
         for (const selector of contentSelectors) {
           const element = $(selector).first();
           if (element.length) {
@@ -294,7 +342,7 @@ export async function scrapeWebsite(url: string) {
             break;
           }
         }
-        
+
         // Extract text from paragraphs and headings
         mainContent.find("h1, h2, h3, h4, h5, h6, p").each((_, element) => {
           const text = $(element).text().trim();
@@ -302,7 +350,7 @@ export async function scrapeWebsite(url: string) {
             content += "\n\n" + text;
           }
         });
-        
+
         // Extract lists
         mainContent.find("li").each((_, element) => {
           const text = $(element).text().trim();
@@ -310,10 +358,11 @@ export async function scrapeWebsite(url: string) {
             content += "\n• " + text;
           }
         });
-        
+
         // If we still don't have content, get all text as a last resort
         if (!content.trim()) {
-          content = mainContent.text()
+          content = mainContent
+            .text()
             .replace(/\s+/g, " ")
             .replace(/\n\s+/g, "\n")
             .trim();
@@ -322,10 +371,8 @@ export async function scrapeWebsite(url: string) {
     }
 
     // Clean up content
-    content = content
-      .replace(/\n{3,}/g, "\n\n")
-      .trim();
-    
+    content = content.replace(/\n{3,}/g, "\n\n").trim();
+
     if (!content.trim()) {
       throw new Error("Could not extract meaningful content from the webpage");
     }
@@ -376,7 +423,7 @@ export async function scrapeWebsite(url: string) {
       content: content,
       biasExamples: examples,
       title: articleTitle,
-      fetchMethod: fetchMethod
+      fetchMethod: fetchMethod,
     };
   } catch (error) {
     console.error("Error scraping website:", error);
