@@ -12,18 +12,24 @@ const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
 async function getBrowser() {
   // Check environment
   const isDev = process.env.NODE_ENV !== "production";
-  
+
   if (isDev) {
-    // For local development
     const puppeteer = await import("puppeteer");
     return puppeteer.default.launch({
       headless: "new" as any,
     });
   } else {
-    // For Vercel production
     return puppeteerCore.launch({
-      args: chromium.args,
-      // defaultViewport line removed
+      args: [
+        ...chromium.args,
+        "--disable-features=AudioServiceOutOfProcess",
+        "--disable-gpu",
+        "--disable-dev-shm-usage",
+        "--disable-setuid-sandbox",
+        "--no-sandbox",
+        "--no-zygote",
+        "--single-process",
+      ],
       executablePath: await chromium.executablePath(),
       headless: true,
     });
@@ -70,7 +76,7 @@ export async function scrapeWebsite(url: string) {
         });
 
         // Wait a bit for dynamic content to load
-        await new Promise(res => setTimeout(res, 2000));
+        await new Promise((res) => setTimeout(res, 2000));
 
         html = await page.content();
       } finally {
@@ -215,109 +221,58 @@ export async function scrapeWebsite(url: string) {
         "Readability extraction failed, trying Puppeteer extraction..."
       );
 
+      // Replace your existing Puppeteer extraction code in the catch block
       if (fetchMethod !== "puppeteer") {
-        // If we haven't used Puppeteer yet, try it now
-        fetchMethod = "puppeteer";
-        const browser = await getBrowser();
         try {
-          const page = await browser.newPage();
-          await page.setUserAgent(
-            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36"
-          );
-          await page.goto(formattedUrl, {
-            waitUntil: "networkidle0",
-            timeout: 60000,
-          });
+          console.log("Starting Puppeteer extraction...");
+          fetchMethod = "puppeteer";
+          const browser = await getBrowser();
 
-          // Try to get title
-          articleTitle = (await page.title()) || "Untitled Article";
+          try {
+            const page = await browser.newPage();
+            await page.setUserAgent(
+              "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36"
+            );
 
-          // Extract text content from main content areas
-          const textContent = await (page.evaluate as any)(() => {
-            // Function to extract visible text while preserving some structure
-            const getVisibleText = (element: any) => {
-              let text = "";
-
-              // Skip hidden elements
-              const style = window.getComputedStyle(element);
-              if (style.display === "none" || style.visibility === "hidden")
-                return "";
-
-              // Process child nodes
-              for (const child of element.childNodes) {
-                if (child.nodeType === Node.TEXT_NODE) {
-                  const trimmed = child.textContent.trim();
-                  if (trimmed) text += " " + trimmed;
-                } else if (child.nodeType === Node.ELEMENT_NODE) {
-                  // Add line breaks for block elements
-                  const childTag = child.tagName.toLowerCase();
-                  if (
-                    [
-                      "div",
-                      "p",
-                      "h1",
-                      "h2",
-                      "h3",
-                      "h4",
-                      "h5",
-                      "h6",
-                      "section",
-                      "article",
-                    ].includes(childTag)
-                  ) {
-                    text += "\n\n";
-                  } else if (childTag === "li") {
-                    text += "\n• ";
-                  } else if (childTag === "br") {
-                    text += "\n";
-                  }
-
-                  text += getVisibleText(child);
-                }
-              }
-              return text;
-            };
-
-            const contentSelectors = [
-              "article",
-              "main",
-              '[role="main"]',
-              ".post-content",
-              ".article-content",
-              ".entry-content",
-              "#content",
-              ".content",
-            ];
-
-            for (const selector of contentSelectors) {
-              const elements = document.querySelectorAll(selector);
-              if (elements.length) {
-                return Array.from(elements)
-                  .map((el) => getVisibleText(el))
-                  .join("\n\n");
-              }
-            }
-
-            const body = document.body;
-
-            [
-              "nav",
-              "header",
-              "footer",
-              "aside",
-              ".sidebar",
-              ".ads",
-              ".comments",
-            ].forEach((selector) => {
-              document.querySelectorAll(selector).forEach((el) => el.remove());
+            console.log(`Navigating to ${formattedUrl} with Puppeteer...`);
+            await page.goto(formattedUrl, {
+              waitUntil: "domcontentloaded", // Less strict than networkidle0
+              timeout: 30000, // Shorter timeout for serverless
             });
 
-            return getVisibleText(body);
-          });
+            // Try to get title
+            articleTitle = (await page.title()) || "Untitled Article";
+            console.log(`Page title: ${articleTitle}`);
 
-          content = textContent;
-        } finally {
-          await browser.close();
+            // Extract text content from main content areas - simplified
+            // Alternative solution with type assertion
+            const textContent = await (page.evaluate as any)(() => {
+              const mainContent =
+                document.querySelector("article") ||
+                document.querySelector("main") ||
+                document.querySelector(".content") ||
+                document.body;
+
+              // Remove unnecessary elements
+              const elementsToRemove = mainContent.querySelectorAll(
+                "nav, footer, header, aside, script, style"
+              );
+              elementsToRemove.forEach((el) => el.remove());
+
+              return mainContent.innerText;
+            });
+
+            content = textContent;
+            console.log(
+              `Extracted content length: ${content.length} characters`
+            );
+          } finally {
+            console.log("Closing browser...");
+            await browser.close();
+          }
+        } catch (puppeteerError) {
+          console.error("Puppeteer extraction error:", puppeteerError);
+          // Continue with what we have or fallback to simple content
         }
       }
 
