@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { useEffect, useRef, useState } from "react";
+import { useTheme } from "next-themes";
 import { scrapeWebsite } from "./actions";
 import {
   HoverCard,
@@ -20,6 +21,13 @@ export default function Home() {
   const [error, setError] = useState("");
   const [aboutOpacity, setAboutOpacity] = useState(1);
   const inputRef = useRef<HTMLDivElement>(null);
+
+  const { theme, setTheme } = useTheme();
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   useEffect(() => {
     const handleScroll = () => {
@@ -55,9 +63,20 @@ export default function Home() {
     }
   };
 
+  if (!mounted) {
+    return <div />;
+  }
+
   return (
     <div className="bg-background min-h-screen w-full flex flex-col items-center justify-center p-4 overflow-auto">
-      {(leaningIndex === null && !loading) && (
+      <Button
+        onClick={() => setTheme(theme === "light" ? "dark" : "light")}
+        className="absolute top-4 right-4 px-3 py-1 rounded bg-muted text-sm font-medium cursor-pointer z-50"
+        aria-label="Toggle theme"
+      >
+        {theme === "light" ? "🌙 Dark" : "☀️ Light"}
+      </Button>
+      {leaningIndex === null && !loading && (
         <div
           className="fixed left-1/2 -translate-x-1/2 z-50 transition-opacity duration-300"
           style={{
@@ -173,12 +192,16 @@ export default function Home() {
                 ) : leaningIndex < -3 && leaningIndex >= -7 ? (
                   <>
                     Source is{" "}
-                    <span className="text-blue-600">moderately left leaning</span>
+                    <span className="text-blue-600">
+                      moderately left leaning
+                    </span>
                   </>
                 ) : leaningIndex > 3 && leaningIndex <= 7 ? (
                   <>
                     Source is{" "}
-                    <span className="text-red-600">moderately right leaning</span>
+                    <span className="text-red-600">
+                      moderately right leaning
+                    </span>
                   </>
                 ) : leaningIndex < -7 ? (
                   <>
