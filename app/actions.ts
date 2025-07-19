@@ -36,15 +36,7 @@ export async function scrapeWebsite(url: string) {
       fetchMethod = "playwright";
 
       // Second attempt: Use Playwright for dynamic content
-      const browser = await chromium.launch({
-        executablePath:
-          process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH || undefined,
-        args: [
-          "--no-sandbox",
-          "--disable-setuid-sandbox",
-          "--disable-dev-shm-usage",
-        ],
-      });
+      const browser = await chromium.launch();
       try {
         const context = await browser.newContext({
           userAgent:
@@ -358,6 +350,7 @@ export async function scrapeWebsite(url: string) {
           }
         });
 
+        // If we still don't have content, get all text as a last resort
         if (!content.trim()) {
           content = mainContent
             .text()
@@ -368,6 +361,7 @@ export async function scrapeWebsite(url: string) {
       }
     }
 
+    // Clean up content
     content = content.replace(/\n{3,}/g, "\n\n").trim();
 
     if (!content.trim()) {
