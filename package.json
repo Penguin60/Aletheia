@@ -6,7 +6,8 @@
     "dev": "next dev --turbopack",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "next lint",
+    "postinstall": "playwright install --with-deps chromium"
   },
   "dependencies": {
     "@browserbasehq/stagehand": "^2.4.1",
