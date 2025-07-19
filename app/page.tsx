@@ -20,6 +20,9 @@ export default function Home() {
   const [biasExamples, setBiasExamples] = useState<string[]>([]);
   const [error, setError] = useState("");
   const [aboutOpacity, setAboutOpacity] = useState(1);
+  const [scrolled, setScrolled] = useState(false);
+  const [scrolledTop, setScrolledTop] = useState(false);
+  const [scrolledBottom, setScrolledBottom] = useState(false);
   const inputRef = useRef<HTMLDivElement>(null);
 
   const { theme, setTheme } = useTheme();
@@ -29,13 +32,49 @@ export default function Home() {
     setMounted(true);
   }, []);
 
+  // Update scrolledBottom whenever content changes or window resizes
+  useEffect(() => {
+    const updateScrolledBottom = () => {
+      const contentEl = document.querySelector('.mt-12');
+      // Check if page is scrolled to the bottom
+      const atBottom = window.innerHeight + window.scrollY >= document.body.offsetHeight - 1;
+      if (atBottom) {
+        setScrolledBottom(false);
+        return;
+      }
+      if (contentEl) {
+        const rect = contentEl.getBoundingClientRect();
+        setScrolledBottom(rect.top < window.innerHeight - 5 * 16);
+      } else {
+        setScrolledBottom(false);
+      }
+    };
+    updateScrolledBottom();
+    window.addEventListener('resize', updateScrolledBottom);
+    return () => window.removeEventListener('resize', updateScrolledBottom);
+  }, [content, biasExamples, leaningIndex, loading]);
+
   useEffect(() => {
     const handleScroll = () => {
+      setScrolledTop(window.scrollY > 0);
       // Fade out the about card as you scroll down
       const scrollY = window.scrollY;
       // Fade out between 0 and 120px
       const opacity = Math.max(0, 1 - scrollY / 120);
       setAboutOpacity(opacity);
+      // Update scrolledBottom on scroll
+      const contentEl = document.querySelector('.mt-12');
+      const atBottom = window.innerHeight + window.scrollY >= document.body.offsetHeight - 1;
+      if (atBottom) {
+        setScrolledBottom(false);
+        return;
+      }
+      if (contentEl) {
+        const rect = contentEl.getBoundingClientRect();
+        setScrolledBottom(rect.top < window.innerHeight - 5 * 16);
+      } else {
+        setScrolledBottom(false);
+      }
     };
     window.addEventListener("scroll", handleScroll);
     return () => window.removeEventListener("scroll", handleScroll);
@@ -70,11 +109,19 @@ export default function Home() {
   return (
     <div
       className={`bg-background min-h-screen w-full flex flex-col items-center justify-center p-4 ${
-        leaningIndex === null && !loading ? "overflow-hidden h-screen" : "overflow-auto"
+        leaningIndex === null && !loading
+          ? "overflow-hidden h-screen"
+          : "overflow-auto"
       }`}
       style={
         leaningIndex === null && !loading
-          ? { position: "fixed", width: "100vw", height: "100vh", top: 0, left: 0 }
+          ? {
+              position: "fixed",
+              width: "100vw",
+              height: "100vh",
+              top: 0,
+              left: 0,
+            }
           : {}
       }
       suppressHydrationWarning
@@ -86,7 +133,7 @@ export default function Home() {
       >
         {theme === "light" ? "🌙 Dark" : "☀️ Light"}
       </Button>
-      {(leaningIndex === null && !loading) && (
+      {leaningIndex === null && !loading && (
         <div
           className="fixed left-1/2 -translate-x-1/2 z-50 transition-opacity duration-300"
           style={{
@@ -110,10 +157,27 @@ export default function Home() {
       )}
       <div
         ref={inputRef}
-        className={`w-full max-w-md space-y-4 transition-all duration-500 ${leaningIndex !== null || loading ? 'fixed z-40 bg-background animate-move-up' : ''}`}
-        style={leaningIndex !== null || loading
-          ? { width: '100%', maxWidth: '28rem', background: 'var(--color-background)', paddingTop: '5rem', paddingBottom: '2rem', top: '50%', left: '50%', transform: 'translate(-50%, 0)' }
-          : {}
+        className={`w-full max-w-md space-y-4 transition-all duration-500 ${
+          leaningIndex !== null || loading
+            ? "fixed z-40 bg-background animate-move-up"
+            : ""
+        }`}
+        style={
+          leaningIndex !== null || loading
+            ? {
+                width: "100vw",
+                maxWidth: "100vw",
+                background: "var(--color-background)",
+                paddingTop: "5rem",
+                paddingBottom: "2rem",
+                paddingLeft: "calc((100vw - 28rem) / 2)",
+                paddingRight: "calc((100vw - 28rem) / 2)",
+                top: "50%",
+                left: "50%",
+                transform: "translate(-50%, 0)",
+                boxShadow: scrolledTop ? "0 12px 24px -8px rgba(0,0,0,0.12)" : "none",
+              }
+            : {}
         }
       >
         <Input
@@ -121,6 +185,11 @@ export default function Home() {
           className="w-full"
           value={url}
           onChange={(e) => setUrl(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") {
+              handleSubmit(e as any);
+            }
+          }}
         />
         <div className="flex items-center justify-between">
           <ToggleGroup
@@ -142,10 +211,12 @@ export default function Home() {
         </div>
         {error && <div className="text-red-500 mt-4">{error}</div>}
       </div>
-      {(loading && leaningIndex === null) && (
+      {loading && leaningIndex === null && (
         <div className="mt-32 flex flex-col items-center justify-center w-full max-w-md">
           <div className="animate-spin rounded-full h-12 w-12 border-t-4 border-b-4 border-primary mb-4"></div>
-          <div className="text-muted-foreground text-lg font-medium">Analyzing...</div>
+          <div className="text-muted-foreground text-lg font-medium">
+            Analyzing...
+          </div>
         </div>
       )}
       {leaningIndex !== null && (
@@ -251,6 +322,54 @@ export default function Home() {
         </div>
       )}
 
+      {/* Bottom overlay that covers the text, requiring scroll to view results */}
+      {(leaningIndex !== null || loading) && (
+        <div
+          style={{
+            position: "fixed",
+            left: 0,
+            bottom: 0,
+            width: "100vw",
+            height: "5rem",
+            background: "var(--color-background)",
+            zIndex: 30,
+            pointerEvents: "none",
+            boxShadow: scrolledBottom ? "0 -12px 24px -8px rgba(0,0,0,0.12)" : "none",
+            transition: "opacity 0.5s",
+          }}
+        />
+      )}
+
+      {/* Left and right solid background color divs to cover the sides (rendered above the search bar background) */}
+      {(leaningIndex !== null || loading) && (
+        <>
+          <div
+            style={{
+              position: "fixed",
+              top: 0,
+              left: 0,
+              width: "calc((100vw - 30rem) / 2)", // slightly less wide
+              height: "100vh",
+              background: "var(--color-background)",
+              zIndex: 41,
+              pointerEvents: "none",
+            }}
+          />
+          <div
+            style={{
+              position: "fixed",
+              top: 0,
+              right: 0,
+              width: "calc((100vw - 30rem) / 2)", // slightly less wide
+              height: "100vh",
+              background: "var(--color-background)",
+              zIndex: 41,
+              pointerEvents: "none",
+            }}
+          />
+        </>
+      )}
+
       <style jsx global>{`
         @keyframes moveUp {
           0% {
@@ -270,6 +389,8 @@ export default function Home() {
           transform: translate(-50%, 0);
         }
       `}</style>
+      {/* Bottom spacer for visual balance */}
+      {(leaningIndex !== null || loading) && <div style={{ height: "5rem" }} />}
     </div>
   );
 }
