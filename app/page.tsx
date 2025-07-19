@@ -35,9 +35,10 @@ export default function Home() {
   // Update scrolledBottom whenever content changes or window resizes
   useEffect(() => {
     const updateScrolledBottom = () => {
-      const contentEl = document.querySelector('.mt-12');
+      const contentEl = document.querySelector(".mt-12");
       // Check if page is scrolled to the bottom
-      const atBottom = window.innerHeight + window.scrollY >= document.body.offsetHeight - 1;
+      const atBottom =
+        window.innerHeight + window.scrollY >= document.body.offsetHeight - 1;
       if (atBottom) {
         setScrolledBottom(false);
         return;
@@ -50,8 +51,8 @@ export default function Home() {
       }
     };
     updateScrolledBottom();
-    window.addEventListener('resize', updateScrolledBottom);
-    return () => window.removeEventListener('resize', updateScrolledBottom);
+    window.addEventListener("resize", updateScrolledBottom);
+    return () => window.removeEventListener("resize", updateScrolledBottom);
   }, [content, biasExamples, leaningIndex, loading]);
 
   useEffect(() => {
@@ -63,8 +64,9 @@ export default function Home() {
       const opacity = Math.max(0, 1 - scrollY / 120);
       setAboutOpacity(opacity);
       // Update scrolledBottom on scroll
-      const contentEl = document.querySelector('.mt-12');
-      const atBottom = window.innerHeight + window.scrollY >= document.body.offsetHeight - 1;
+      const contentEl = document.querySelector(".mt-12");
+      const atBottom =
+        window.innerHeight + window.scrollY >= document.body.offsetHeight - 1;
       if (atBottom) {
         setScrolledBottom(false);
         return;
@@ -155,6 +157,16 @@ export default function Home() {
           </HoverCard>
         </div>
       )}
+      {leaningIndex === null && !loading && (
+        <div>
+          {theme === "dark" && (
+            <img src="./White_Logo.png" className="w-[10rem] h-auto" />
+          )}
+          {theme === "light" && (
+            <img src="./Black_Logo.png" className="w-[10rem] h-auto" />
+          )}
+        </div>
+      )}
       <div
         ref={inputRef}
         className={`w-full max-w-md space-y-4 ${
@@ -175,7 +187,9 @@ export default function Home() {
                 top: "50%",
                 left: "50%",
                 transform: "translate(-50%, 0)",
-                boxShadow: scrolledTop ? "0 12px 24px -8px rgba(0,0,0,0.12)" : "none",
+                boxShadow: scrolledTop
+                  ? "0 12px 24px -8px rgba(0,0,0,0.12)"
+                  : "none",
               }
             : {}
         }
@@ -186,7 +200,8 @@ export default function Home() {
           value={url}
           onChange={(e) => setUrl(e.target.value)}
           onKeyDown={(e) => {
-            const isDisabled = loading || !url.trim() || !/^https?:\/\/.+\..+/.test(url);
+            const isDisabled =
+              loading || !url.trim() || !/^https?:\/\/.+\..+/.test(url);
             if (e.key === "Enter" && !isDisabled) {
               handleSubmit(e as any);
             }
@@ -250,22 +265,30 @@ export default function Home() {
       {leaningIndex !== null && (
         <div className="mt-50 w-full max-w-md mx-auto">
           <div className="flex justify-between text-xs mb-2 w-full">
-            <span className={
-              theme === "dark"
-                ? "text-blue-300 font-bold"
-                : "text-blue-600 font-bold"
-            }>Strongly Left</span>
+            <span
+              className={
+                theme === "dark"
+                  ? "text-blue-300 font-bold"
+                  : "text-blue-600 font-bold"
+              }
+            >
+              Strongly Left
+            </span>
             <span
               className="text-text mx-auto font-bold"
               style={{ flex: 1, textAlign: "center" }}
             >
               Neutral
             </span>
-            <span className={
-              theme === "dark"
-                ? "text-red-300 font-bold"
-                : "text-red-600 font-bold"
-            }>Strongly Right</span>
+            <span
+              className={
+                theme === "dark"
+                  ? "text-red-300 font-bold"
+                  : "text-red-600 font-bold"
+              }
+            >
+              Strongly Right
+            </span>
           </div>
           {/* Scale */}
           <div
@@ -291,11 +314,13 @@ export default function Home() {
           </div>
           {/* Bottom: Number labels */}
           <div className="flex justify-between text-xs mt-2 w-full">
-            <span className={
-              theme === "dark"
-                ? "text-blue-300 font-bold"
-                : "text-blue-600 font-bold"
-            }>
+            <span
+              className={
+                theme === "dark"
+                  ? "text-blue-300 font-bold"
+                  : "text-blue-600 font-bold"
+              }
+            >
               -10
             </span>
             <span
@@ -304,11 +329,13 @@ export default function Home() {
             >
               0
             </span>
-            <span className={
-              theme === "dark"
-                ? "text-red-300 font-bold"
-                : "text-red-600 font-bold"
-            }>
+            <span
+              className={
+                theme === "dark"
+                  ? "text-red-300 font-bold"
+                  : "text-red-600 font-bold"
+              }
+            >
               +10
             </span>
           </div>
@@ -316,35 +343,91 @@ export default function Home() {
             {leaningIndex !== null &&
               (leaningIndex >= -1 && leaningIndex <= 1 ? (
                 <>
-                  Source is <span className={theme === "dark" ? "text-gray-400" : "text-gray-600"}>neutral</span>
+                  Source is{" "}
+                  <span
+                    className={
+                      theme === "dark" ? "text-gray-400" : "text-gray-600"
+                    }
+                  >
+                    neutral
+                  </span>
                 </>
               ) : leaningIndex < -1 && leaningIndex >= -3 ? (
                 <>
-                  Source is <span className={theme === "dark" ? "text-blue-300" : "text-blue-600"}>slightly left leaning</span>
+                  Source is{" "}
+                  <span
+                    className={
+                      theme === "dark" ? "text-blue-300" : "text-blue-600"
+                    }
+                  >
+                    slightly left leaning
+                  </span>
                 </>
               ) : leaningIndex > 1 && leaningIndex <= 3 ? (
                 <>
-                  Source is <span className={theme === "dark" ? "text-red-300" : "text-red-600"}>slightly right leaning</span>
+                  Source is{" "}
+                  <span
+                    className={
+                      theme === "dark" ? "text-red-300" : "text-red-600"
+                    }
+                  >
+                    slightly right leaning
+                  </span>
                 </>
               ) : leaningIndex < -3 && leaningIndex >= -7 ? (
                 <>
-                  Source is <span className={theme === "dark" ? "text-blue-300" : "text-blue-600"}>moderately left leaning</span>
+                  Source is{" "}
+                  <span
+                    className={
+                      theme === "dark" ? "text-blue-300" : "text-blue-600"
+                    }
+                  >
+                    moderately left leaning
+                  </span>
                 </>
               ) : leaningIndex > 3 && leaningIndex <= 7 ? (
                 <>
-                  Source is <span className={theme === "dark" ? "text-red-300" : "text-red-600"}>moderately right leaning</span>
+                  Source is{" "}
+                  <span
+                    className={
+                      theme === "dark" ? "text-red-300" : "text-red-600"
+                    }
+                  >
+                    moderately right leaning
+                  </span>
                 </>
               ) : leaningIndex < -7 ? (
                 <>
-                  Source is <span className={theme === "dark" ? "text-blue-300" : "text-blue-600"}>strongly left leaning</span>
+                  Source is{" "}
+                  <span
+                    className={
+                      theme === "dark" ? "text-blue-300" : "text-blue-600"
+                    }
+                  >
+                    strongly left leaning
+                  </span>
                 </>
               ) : leaningIndex > 7 ? (
                 <>
-                  Source is <span className={theme === "dark" ? "text-red-300" : "text-red-600"}>strongly right leaning</span>
+                  Source is{" "}
+                  <span
+                    className={
+                      theme === "dark" ? "text-red-300" : "text-red-600"
+                    }
+                  >
+                    strongly right leaning
+                  </span>
                 </>
               ) : (
                 <>
-                  Source is <span className={theme === "dark" ? "text-gray-400" : "text-gray-600"}>neutral</span>
+                  Source is{" "}
+                  <span
+                    className={
+                      theme === "dark" ? "text-gray-400" : "text-gray-600"
+                    }
+                  >
+                    neutral
+                  </span>
                 </>
               ))}
           </div>
@@ -376,7 +459,9 @@ export default function Home() {
             background: "var(--color-background)",
             zIndex: 30,
             pointerEvents: "none",
-            boxShadow: scrolledBottom ? "0 -12px 24px -8px rgba(0,0,0,0.12)" : "none",
+            boxShadow: scrolledBottom
+              ? "0 -12px 24px -8px rgba(0,0,0,0.12)"
+              : "none",
             transition: "opacity 0.5s",
           }}
         />
