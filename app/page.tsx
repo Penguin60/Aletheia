@@ -28,7 +28,7 @@ export default function Home() {
       //   setContent(null);
       //   setError("No content found.");
       // }
-      setContent(result.content)
+      setContent(result.content || null);
     } catch (err) {
       setError(
         "Failed to scrape website: " +

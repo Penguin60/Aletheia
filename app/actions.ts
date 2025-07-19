@@ -1,8 +1,11 @@
 "use server";
 
+import { GoogleGenAI } from "@google/genai";
 import { Readability } from "@mozilla/readability";
 import { JSDOM } from "jsdom";
 import * as cheerio from "cheerio";
+
+const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
 
 export async function scrapeWebsite(url: string) {
   try {
@@ -100,10 +103,6 @@ export async function scrapeWebsite(url: string) {
       ].join(", ")
     ).remove();
 
-    // $(
-    //   "script, style, noscript, meta, link, iframe, svg, img, video, audio, object, embed"
-    // ).remove();
-
     const cleanedHtml = $.html();
 
     const dom = new JSDOM(cleanedHtml, { url: formattedUrl });
@@ -161,7 +160,14 @@ export async function scrapeWebsite(url: string) {
           }
         }
       });
-    return { content: content };
+
+    // const prompt = `Refine the following website content for readability and conciseness. Do not add any additional text. Only remove irrelevant information, like site headers and login prompts; do not remove, change, or summarize any parts of the actual article. You must return the content provided to you the exact same, except for elements like site headers, etc that do not relate to the overall theme. Do not include extra formatting. The content is as follows:\n\n${content}`;
+    const prompt = `Given the following content, return a single word indicating whether it is left leaning, right leaning, or neutral. You must only return one of the following three words correspoinding with the previous choices: left, right, center. The content: ${content}`
+    const geminiResponse = await ai.models.generateContent({
+      model: "gemini-2.0-flash",
+      contents: `${prompt}`,
+    });
+    return { content: geminiResponse.text };
   } catch (error) {
     console.error("Error scraping website:", error);
     throw error;
