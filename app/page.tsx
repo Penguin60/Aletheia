@@ -5,6 +5,11 @@ import { Input } from "@/components/ui/input";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { useState } from "react";
 import { scrapeWebsite } from "./actions";
+import {
+  HoverCard,
+  HoverCardContent,
+  HoverCardTrigger,
+} from "@/components/ui/hover-card";
 
 export default function Home() {
   const [url, setUrl] = useState("");
@@ -38,6 +43,18 @@ export default function Home() {
 
   return (
     <div className="bg-background h-screen flex flex-col items-center justify-center p-4">
+      <div className="absolute top-6 left-1/2 -translate-x-1/2">
+        <HoverCard>
+          <HoverCardTrigger className="px-3 py-1 rounded bg-muted text-sm font-medium cursor-pointer">
+        about
+          </HoverCardTrigger>
+          <HoverCardContent>
+            <div className="text-sm">
+              Analyzes the political bias of a piece of media, just paste the link or upload the video!
+            </div>
+          </HoverCardContent>
+        </HoverCard>
+      </div>
       <div className="w-full max-w-md space-y-4">
         <Input
           placeholder="paste..."
