@@ -157,7 +157,7 @@ export default function Home() {
       )}
       <div
         ref={inputRef}
-        className={`w-full max-w-md space-y-4 transition-all duration-500 ${
+        className={`w-full max-w-md space-y-4 ${
           leaningIndex !== null || loading
             ? "fixed z-40 bg-background animate-move-up"
             : ""
@@ -224,7 +224,7 @@ export default function Home() {
           <div className="flex justify-between text-xs mb-2 w-full">
             <span className="text-blue-600 font-bold">Strongly Left</span>
             <span
-              className="text-gray-600 mx-auto font-bold"
+              className="text-text mx-auto font-bold"
               style={{ flex: 1, textAlign: "center" }}
             >
               Neutral
@@ -314,7 +314,7 @@ export default function Home() {
           <h3 className="text-lg font-medium">Examples of bias:</h3>
           <ul className="space-y-2 list-disc pl-5">
             {biasExamples.map((example, index) => (
-              <li key={index} className="text-sm text-gray-700">
+              <li key={index} className="text-sm text-text">
                 {example}
               </li>
             ))}
