@@ -37,7 +37,7 @@ export async function scrapeWebsite(url: string) {
 
       // Second attempt: Use Puppeteer for dynamic content
       const browser = await puppeteer.launch({
-        headless: "new",
+        headless: "new" as any,
       });
       try {
         const page = await browser.newPage();
@@ -50,7 +50,7 @@ export async function scrapeWebsite(url: string) {
         });
 
         // Wait a bit for dynamic content to load
-        await page.waitForTimeout(2000);
+        await new Promise(res => setTimeout(res, 2000));
 
         html = await page.content();
       } finally {
@@ -199,7 +199,7 @@ export async function scrapeWebsite(url: string) {
         // If we haven't used Puppeteer yet, try it now
         fetchMethod = "puppeteer";
         const browser = await puppeteer.launch({
-          headless: "new",
+          headless: "new" as any,
         });
         try {
           const page = await browser.newPage();
@@ -212,7 +212,7 @@ export async function scrapeWebsite(url: string) {
           });
 
           // Try to get title
-          articleTitle = await page.title() || "Untitled Article";
+          articleTitle = (await page.title()) || "Untitled Article";
 
           // Extract text content from main content areas
           const textContent = await page.evaluate(() => {
