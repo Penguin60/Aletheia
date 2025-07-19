@@ -3,7 +3,7 @@
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { scrapeWebsite } from "./actions";
 import {
   HoverCard,
@@ -18,6 +18,20 @@ export default function Home() {
   const [content, setContent] = useState("");
   const [biasExamples, setBiasExamples] = useState<string[]>([]);
   const [error, setError] = useState("");
+  const [aboutOpacity, setAboutOpacity] = useState(1);
+  const inputRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handleScroll = () => {
+      // Fade out the about card as you scroll down
+      const scrollY = window.scrollY;
+      // Fade out between 0 and 120px
+      const opacity = Math.max(0, 1 - scrollY / 120);
+      setAboutOpacity(opacity);
+    };
+    window.addEventListener("scroll", handleScroll);
+    return () => window.removeEventListener("scroll", handleScroll);
+  }, []);
 
   const handleSubmit = async (e: React.MouseEvent<HTMLButtonElement>) => {
     e.preventDefault();
@@ -42,21 +56,32 @@ export default function Home() {
   };
 
   return (
-    <div className="bg-background h-screen flex flex-col items-center justify-center p-4">
-      <div className="absolute top-6 left-1/2 -translate-x-1/2">
-        <HoverCard>
-          <HoverCardTrigger className="px-3 py-1 rounded bg-muted text-sm font-medium cursor-pointer">
-            about
-          </HoverCardTrigger>
-          <HoverCardContent className="bg-background dark:bg-background rounded-lg shadow-lg p-4">
-            <div className="text-sm">
-              Analyzes the political bias of a piece of media, just paste the
-              link or upload the video!
-            </div>
-          </HoverCardContent>
-        </HoverCard>
-      </div>
-      <div className="w-full max-w-md space-y-4">
+    <div className="bg-background min-h-screen w-full flex flex-col items-center justify-center p-4 overflow-auto">
+      {(leaningIndex === null && !loading) && (
+        <div
+          className="fixed left-1/2 -translate-x-1/2 z-50 transition-opacity duration-300"
+          style={{
+            top: inputRef.current?.getBoundingClientRect().top
+              ? Math.max(24, inputRef.current.getBoundingClientRect().top - 64)
+              : 24,
+            opacity: aboutOpacity,
+            pointerEvents: aboutOpacity === 0 ? "none" : "auto",
+          }}
+        >
+          <HoverCard>
+            <HoverCardTrigger className="px-3 py-1 rounded bg-muted text-sm font-medium cursor-pointer">
+              about
+            </HoverCardTrigger>
+            <HoverCardContent className="bg-background dark:bg-background rounded-lg shadow-lg p-4">
+              <div className="text-sm">
+                Analyzes the political bias of a piece of media, just paste the
+                link or upload the video!
+              </div>
+            </HoverCardContent>
+          </HoverCard>
+        </div>
+      )}
+      <div ref={inputRef} className="w-full max-w-md space-y-4">
         <Input
           placeholder="paste..."
           className="w-full"
