@@ -113,6 +113,9 @@ export async function scrapeWebsite(url: string) {
       throw new Error("Could not extract readable content");
     }
 
+    // Extract the article title from Readability
+    const articleTitle = article.title || "Untitled Article";
+
     //   const finalText = $$.text()
     //     .replace(/\s+/g, " ")
     //     .replace(/\n\s+/g, "\n")
@@ -161,13 +164,53 @@ export async function scrapeWebsite(url: string) {
         }
       });
 
-    // const prompt = `Refine the following website content for readability and conciseness. Do not add any additional text. Only remove irrelevant information, like site headers and login prompts; do not remove, change, or summarize any parts of the actual article. You must return the content provided to you the exact same, except for elements like site headers, etc that do not relate to the overall theme. Do not include extra formatting. The content is as follows:\n\n${content}`;
-    const prompt = `Given the following content, return a number between -10 and 10 (inclusive) indicating the political leaning. The lower the number, the more left leaning. The higher the number, the more right leaning. The content: ${content}`
+    const prompt = `
+    The following content is from an article titled: "${articleTitle}"
+    
+    Analyze the content for political bias, keeping in mind that the main topic is about "${articleTitle}". 
+    Focus ONLY on content related to this topic and ignore any references to other articles, sidebar content, 
+    or unrelated headlines that might have been captured during scraping.
+    
+    Please provide:
+    1. A number between -10 and 10 (inclusive) indicating the political leaning. The lower the number, the more left leaning. The higher the number, the more right leaning.
+    2. Three specific examples from the content that demonstrate this political bias. Ensure these examples are from the main article about "${articleTitle}" and not from other articles or sidebar content.
+    
+    Important: List the examples in order of significance, with the most egregious/obvious examples of bias first. Focus on the clearest and most impactful instances of political framing, loaded language, or one-sided representation.
+    
+    Format your response exactly as follows:
+    SCORE: [your number]
+    
+    EXAMPLES:
+    - [most significant example of bias]
+    - [second most significant example]
+    - [third most significant example]
+    
+    The content: ${content}`;
+
     const geminiResponse = await ai.models.generateContent({
       model: "gemini-2.0-flash",
       contents: `${prompt}`,
     });
-    return { content: geminiResponse.text };
+
+    const responseText = geminiResponse.text ?? "";
+
+    const scoreMatch = responseText.match(/SCORE:\s*(-?\d+)/);
+    const score = scoreMatch ? parseInt(scoreMatch[1]) : 0;
+
+    const examplesSection = responseText.split("EXAMPLES:")[1]?.trim();
+    const examples = examplesSection
+      ? examplesSection
+          .split(/\n-\s*/)
+          .filter((example) => example.trim().length > 0)
+          .map((example) => example.trim())
+      : [];
+
+    return {
+      leaningIndex: score,
+      content: content,
+      biasExamples: examples,
+      title: articleTitle,
+    };
   } catch (error) {
     console.error("Error scraping website:", error);
     throw error;

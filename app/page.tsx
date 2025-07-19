@@ -9,33 +9,28 @@ import { scrapeWebsite } from "./actions";
 export default function Home() {
   const [url, setUrl] = useState("");
   const [loading, setLoading] = useState(false);
-  const [content, setContent] = useState<string | null>(null);
-  const [error, setError] = useState<string | null>(null);
   const [leaningIndex, setLeaningIndex] = useState<number | null>(null);
+  const [content, setContent] = useState("");
+  const [biasExamples, setBiasExamples] = useState<string[]>([]);
+  const [error, setError] = useState("");
 
-  const handleScrape = async () => {
-    if (!url) {
-      setError("Please enter a URL");
-      return;
-    }
+  const handleSubmit = async (e: React.MouseEvent<HTMLButtonElement>) => {
+    e.preventDefault();
+    setLoading(true);
+    setError("");
 
     try {
-      setLoading(true);
-      setError(null);
       const result = await scrapeWebsite(url);
-      const index = Number(result.content);
-      setLeaningIndex(isNaN(index) ? null : index);
-      setContent(
-        result.content +
-          (isNaN(index)
-            ? ""
-            : ` ${index < 0 ? "Left leaning" : index > 0 ? "Right leaning" : "Neutral"}`)
-      );
+      setLeaningIndex(result.leaningIndex);
+      setContent(result.content);
+      setBiasExamples(result.biasExamples);
     } catch (err) {
-      setError(
-        "Failed to scrape website: " +
-          (err instanceof Error ? err.message : String(err))
-      );
+      console.error("Error:", err);
+      let errorMessage = "Failed to analyze the website. Please try again.";
+      if (err && typeof err === "object" && "message" in err) {
+        errorMessage = (err as { message: string }).message;
+      }
+      setError(errorMessage);
     } finally {
       setLoading(false);
     }
@@ -60,7 +55,7 @@ export default function Home() {
             <ToggleGroupItem value="video">video</ToggleGroupItem>
           </ToggleGroup>
           <Button
-            onClick={handleScrape}
+            onClick={handleSubmit}
             variant="outline"
             className=""
             disabled={loading}
@@ -73,10 +68,12 @@ export default function Home() {
 
         {leaningIndex !== null && (
           <div className="mt-4">
-            {/* Top: Text labels */}
             <div className="flex justify-between text-xs mb-1 w-full">
               <span className="text-blue-600 font-bold">Strongly Left</span>
-              <span className="text-gray-600 mx-auto font-bold" style={{ flex: 1, textAlign: "center" }}>
+              <span
+                className="text-gray-600 mx-auto font-bold"
+                style={{ flex: 1, textAlign: "center" }}
+              >
                 Neutral
               </span>
               <span className="text-red-600 font-bold">Strongly Right</span>
@@ -106,34 +103,63 @@ export default function Home() {
             {/* Bottom: Number labels */}
             <div className="flex justify-between text-xs mt-1 w-full">
               <span className="text-blue-600 font-bold">-10</span>
-              <span className="text-gray-600 mx-auto font-bold" style={{ flex: 1, textAlign: "center" }}>
+              <span
+                className="text-gray-600 mx-auto font-bold"
+                style={{ flex: 1, textAlign: "center" }}
+              >
                 0
               </span>
               <span className="text-red-600 font-bold">+10</span>
             </div>
             <div className="text-center mt-1 text-sm font-semibold">
-              {leaningIndex !== null && (
-                leaningIndex === 0 ? (
-                  <>Source is <span className="text-gray-600">neutral</span></>
-                ) : (leaningIndex > 0 && leaningIndex <= 4) ? (
-                  <>Source is <span className="text-red-600">moderately right leaning</span></>
-                ) : (leaningIndex > 4) ? (
-                  <>Source is <span className="text-red-600">strongly right leaning</span></>
-                ) : (leaningIndex < 0 && leaningIndex >= -4) ? (
-                  <>Source is <span className="text-blue-600">moderately left leaning</span></>
-                ) : (leaningIndex < -4) ? (
-                  <>Source is <span className="text-blue-600">strongly left leaning</span></>
+              {leaningIndex !== null &&
+                (leaningIndex === 0 ? (
+                  <>
+                    Source is <span className="text-gray-600">neutral</span>
+                  </>
+                ) : leaningIndex > 0 && leaningIndex <= 4 ? (
+                  <>
+                    Source is{" "}
+                    <span className="text-red-600">
+                      moderately right leaning
+                    </span>
+                  </>
+                ) : leaningIndex > 4 ? (
+                  <>
+                    Source is{" "}
+                    <span className="text-red-600">strongly right leaning</span>
+                  </>
+                ) : leaningIndex < 0 && leaningIndex >= -4 ? (
+                  <>
+                    Source is{" "}
+                    <span className="text-blue-600">
+                      moderately left leaning
+                    </span>
+                  </>
+                ) : leaningIndex < -4 ? (
+                  <>
+                    Source is{" "}
+                    <span className="text-blue-600">strongly left leaning</span>
+                  </>
                 ) : (
-                  <>Source is <span className="text-gray-600">neutral</span></>
-                )
-              )}
+                  <>
+                    Source is <span className="text-gray-600">neutral</span>
+                  </>
+                ))}
             </div>
           </div>
         )}
 
         {content && (
-          <div className="mt-4 border p-4 rounded-md max-h-80 overflow-auto">
-            <pre className="text-xs whitespace-pre-wrap">{content}</pre>
+          <div className="mt-6 space-y-4">
+            <h3 className="text-lg font-medium">Examples of bias:</h3>
+            <ul className="space-y-2 list-disc pl-5">
+              {biasExamples.map((example, index) => (
+                <li key={index} className="text-sm text-gray-700">
+                  {example}
+                </li>
+              ))}
+            </ul>
           </div>
         )}
       </div>
