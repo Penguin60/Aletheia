@@ -377,6 +377,8 @@ export async function scrapeWebsite(url: string) {
       throw new Error("Could not extract meaningful content from the webpage");
     }
 
+    console.log(`Content extracted successfully, length: ${content.length} characters`);
+
     const prompt = `
     The following content is from an article titled: "${articleTitle}"
     
