@@ -186,7 +186,8 @@ export default function Home() {
           value={url}
           onChange={(e) => setUrl(e.target.value)}
           onKeyDown={(e) => {
-            if (e.key === "Enter") {
+            const isDisabled = loading || !url.trim() || !/^https?:\/\/.+\..+/.test(url);
+            if (e.key === "Enter" && !isDisabled) {
               handleSubmit(e as any);
             }
           }}
@@ -195,7 +196,11 @@ export default function Home() {
           <ToggleGroup
             type="single"
             value={selectedType}
-            onValueChange={setSelectedType}
+            onValueChange={(val) => {
+              // Prevent unselecting by always keeping one selected
+              if (!val) return;
+              setSelectedType(val);
+            }}
             className="justify-start"
           >
             <ToggleGroupItem
@@ -226,8 +231,8 @@ export default function Home() {
           <Button
             onClick={handleSubmit}
             variant="outline"
-            className=""
-            disabled={loading}
+            className="hover:text-primary border-black"
+            disabled={loading || !url.trim() || !/^https?:\/\/.+\..+/.test(url)}
           >
             {loading ? "Loading..." : "go"}
           </Button>
