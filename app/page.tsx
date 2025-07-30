@@ -94,18 +94,17 @@ export default function Home() {
         setLeaningIndex(result.leaningIndex);
         setContent(result.content);
         setBiasExamples(result.biasExamples);
-      }
-      else if (selectedType === "video" && videoFile) {
+      } else if (selectedType === "video" && videoFile) {
         // Send video file to API route using FormData
         const formData = new FormData();
-        formData.append('file', videoFile);
-        const response = await fetch('/api/upload', {
-          method: 'POST',
+        formData.append("file", videoFile);
+        const response = await fetch("/api/upload", {
+          method: "POST",
           body: formData,
         });
         if (!response.ok) {
           const errorData = await response.json();
-          throw new Error(errorData.error || 'Upload failed');
+          throw new Error(errorData.error || "Upload failed");
         }
         const result = await response.json();
         setLeaningIndex(result.leaningIndex);
@@ -174,7 +173,7 @@ export default function Home() {
             <HoverCardContent className="bg-background dark:bg-background rounded-lg shadow-lg p-4">
               <div className="text-sm">
                 Analyzes the political bias of a piece of media, just paste the
-                link or upload the video!
+                link! Please note that for financial reasons, video analysis is temporarily disabled.
               </div>
             </HoverCardContent>
           </HoverCard>
@@ -224,7 +223,8 @@ export default function Home() {
             value={url}
             onChange={(e) => setUrl(e.target.value)}
             onKeyDown={(e) => {
-              const isDisabled = loading || !url.trim() || !/^https?:\/\/.+\..+/.test(url);
+              const isDisabled =
+                loading || !url.trim() || !/^https?:\/\/.+\..+/.test(url);
               if (e.key === "Enter" && !isDisabled) {
                 handleSubmit(e as any);
               }
@@ -270,13 +270,21 @@ export default function Home() {
             </ToggleGroupItem>
             <ToggleGroupItem
               value="video"
-              className={
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                alert(
+                  "For financial reasons, video has been temporarily disabled."
+                );
+              }}
+              className={`${
                 selectedType === "video"
                   ? theme === "dark"
                     ? "bg-background text-black border border-white"
                     : "bg-background text-white border border-black"
                   : ""
-              }
+              } opacity-50 cursor-not-allowed`}
+              disabled={true}
             >
               video
             </ToggleGroupItem>
